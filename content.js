@@ -32,7 +32,9 @@ function main() {
     handleAreaPage();
   } else if (url.includes('/ticket/ticket/')) {
     handleTicketPage();
-  }else {
+  } else if (url.includes('/verify')) {
+  handleVerifyPage();
+  } else {
     // 若頁面上有票價表單就執行 handleTicketPage（更通用）
     const ticketForm = document.getElementById('TicketForm_ticketPrice_01');
     if (ticketForm) {
@@ -75,6 +77,44 @@ function handleActivityPage() {
 
   observer.observe(document.body, { childList: true, subtree: true });
 }
+
+// 預購驗證頁（如 MyVideo / 星展卡友）
+function handleVerifyPage() {
+  console.log("🔐 進入預購驗證頁");
+
+  const input = document.querySelector('#form-ticket-verify input[name="checkCode"]');
+  const submitBtn = document.querySelector('#form-ticket-verify button[type="submit"]');
+
+  if (!input) {
+    console.warn("⚠️ 找不到預購碼輸入欄位");
+    return;
+  }
+
+  chrome.storage.sync.get('presaleCode', (data) => {
+    if (data.presaleCode) {
+      input.value = data.presaleCode;
+      input.focus();
+      input.dispatchEvent(new Event('input'));
+      console.log(`✍️ 已自動填入預售代碼：${data.presaleCode}`);
+    } else {
+      input.focus();
+    }
+  });
+
+  if (!input.dataset.bound) {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (submitBtn) {
+          submitBtn.click();
+          console.log("🚀 已按 Enter 自動送出預購驗證");
+        }
+      }
+    });
+    input.dataset.bound = "true";
+  }
+}
+
 
 // 選位頁：找白名單＋紅字座位，若無則自動刷新
 function handleAreaPage() {
