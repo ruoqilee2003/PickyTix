@@ -214,12 +214,23 @@ function handleTicketPage() {
       clearInterval(interval);
       console.log("✅ 發現票選欄位與勾選框，開始自動操作...");
 
-      if (ticketSelect.value !== settings.ticketCount) {
-        ticketSelect.value = settings.ticketCount;
-        ticketSelect.dispatchEvent(new Event('change'));
-        console.log(`✅ 選擇票數 ${settings.ticketCount}`);
+      const maxOption = Math.max(...[...ticketSelect.options]
+        .map(opt => parseInt(opt.value))
+        .filter(n => !isNaN(n))
+      );
+      
+      let requested = parseInt(settings.ticketCount);
+      if (isNaN(requested)) requested = 1;
+      
+      if (requested > maxOption) {
+        ticketSelect.value = maxOption.toString();
+        console.log(`⚠️ 可選票數僅 ${maxOption}，自動調整`);
+      } else {
+        ticketSelect.value = requested.toString();
+        console.log(`✅ 選擇票數 ${requested}`);
       }
-
+      ticketSelect.dispatchEvent(new Event('change'));
+      
       if (!agreeCheckbox.checked) {
         agreeCheckbox.click();
         console.log("✅ 勾選同意條款");
