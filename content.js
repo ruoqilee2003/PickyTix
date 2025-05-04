@@ -45,33 +45,60 @@ function main() {
 
 // 活動頁：自動點擊「自動購票」或「立即訂購」並下滑
 function handleActivityPage() {
-  console.log("🎬 進入活動頁！啟動自動偵測購票按鈕...");
+  console.log("🎬 進入活動頁！");
 
-  window.scrollTo({ top: 400, behavior: "smooth" }); // 模擬使用者滑動觸發懶加載
+  window.scrollTo({ top: 400, behavior: "smooth" });
 
   const observer = new MutationObserver(() => {
-    // 找 <a> 中有 "立即購票" 的連結
     const ticketLink = [...document.querySelectorAll("a")].find(a =>
       a.textContent.includes("立即購票")
     );
 
     if (ticketLink) {
       ticketLink.click();
-      console.log("🎯 偵測到『立即購票』連結，已自動點擊！");
+      console.log("🎯 偵測到『立即購票』，已自動點擊！");
       observer.disconnect();
 
-      // ✨ 延遲一下，再按下真正的「立即訂購」按鈕
+      // 等展開完成後再找關鍵字
       setTimeout(() => {
-        const orderBtn = [...document.querySelectorAll("button")].find(btn =>
-          btn.textContent.includes("立即訂購")
-        );
-        if (orderBtn) {
-          orderBtn.click();
-          console.log("✅ 延遲後自動點擊『立即訂購』按鈕！");
-        } else {
-          console.log("⚠️ 找不到『立即訂購』按鈕");
-        }
-      }, 300); // ⏱️ 你可以視情況改成 500 ~ 1500 毫秒
+        chrome.storage.local.get('concertKeyword', ({ concertKeyword }) => {
+          const raw = concertKeyword?.trim();
+          const keywords = raw
+            ? raw.split(",").map(k => k.trim().replace(/\s+/g, ''))
+            : [];
+
+          const rows = [...document.querySelectorAll('tr.gridc.fcTxt')];
+          if (!rows.length) {
+            console.log("❌ 沒有任何場次可選");
+            return;
+          }
+
+          let matchedRow = null;
+
+          if (keywords.length) {
+            matchedRow = rows.find(row => {
+              const text = row.innerText.replace(/\s+/g, '');
+              return keywords.every(kw => text.includes(kw));
+            });
+          }
+
+          const targetRow = matchedRow || rows[0];
+
+          if (!matchedRow && keywords.length) {
+            console.log(`⚠️ 未匹配關鍵字「${keywords.join(', ')}」，預設選擇第一場`);
+          } else if (!keywords.length) {
+            console.log("ℹ️ 未輸入關鍵字，預設選擇第一場");
+          }
+
+          const orderBtn = targetRow.querySelector("button");
+          if (orderBtn && orderBtn.textContent.includes("立即訂購")) {
+            orderBtn.click();
+            console.log(`✅ 點擊場次：「${targetRow.innerText.split('\n')[0]}」`);
+          } else {
+            console.log("⚠️ 找不到對應場次的『立即訂購』按鈕");
+          }
+        });
+      }, 500); // ⏱️ 等表格展開
     }
   });
 
